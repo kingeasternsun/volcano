@@ -19,11 +19,12 @@ package networktopologyaware
 import (
 	"fmt"
 	"net"
-	"strconv"
-	"strings"
 
-	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/klog/v2"
+
+	"volcano.sh/volcano/pkg/features"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 	"volcano.sh/volcano/pkg/scheduler/util"
@@ -35,12 +36,14 @@ const (
 	BaseScore             = 100.0
 	ZeroScore             = 0.0
 	NetworkTopologyWeight = "weight"
+	HighPriorityIPScore   = "highPriorityIPScore"
 )
 
 type networkTopologyAwarePlugin struct {
 	// Arguments given for the plugin
-	pluginArguments framework.Arguments
-	weight          int
+	pluginArguments     framework.Arguments
+	weight              int
+	highPriorityIPScore float64
 	*hyperNodesTier
 }
 
@@ -60,9 +63,10 @@ func (h *hyperNodesTier) init(hyperNodesSetByTier []int) {
 // New function returns prioritizePlugin object
 func New(arguments framework.Arguments) framework.Plugin {
 	return &networkTopologyAwarePlugin{
-		pluginArguments: arguments,
-		hyperNodesTier:  &hyperNodesTier{},
-		weight:          calculateWeight(arguments),
+		pluginArguments:     arguments,
+		hyperNodesTier:      &hyperNodesTier{},
+		weight:              calculateWeight(arguments),
+		highPriorityIPScore: calculateHighPriorityIPScore(arguments),
 	}
 }
 
@@ -81,6 +85,21 @@ func calculateWeight(args framework.Arguments) int {
 	*/
 	weight := 1
 	args.GetInt(&weight, NetworkTopologyWeight)
+	return weight
+}
+
+func calculateHighPriorityIPScore(args framework.Arguments) float64 {
+	/*
+		   The arguments of the networktopologyaware plugin can refer to the following configuration:
+		   tiers:
+		   - plugins:
+		     - name: network-topology-aware
+		       arguments:
+		         weight: 10
+				 high
+	*/
+	weight := 0.0
+	args.GetFloat64(&weight, NetworkTopologyWeight)
 	return weight
 }
 
@@ -138,7 +157,7 @@ func (nta *networkTopologyAwarePlugin) OnSessionOpen(ssn *framework.Session) {
 		}
 		// Calculate score based on LCAHyperNode tier.
 		var maxScore float64 = -1
-		scoreToNodes := map[float64][]string{}
+		scoreToNodes := map[float64][]*api.NodeInfo{}
 		for _, node := range nodes {
 			hyperNode := util.FindHyperNodeForNode(node.Name, ssn.RealNodesList, ssn.HyperNodesTiers, ssn.HyperNodesSetByTier)
 			score := nta.networkTopologyAwareScore(hyperNode, jobAllocatedHyperNode, ssn.HyperNodes)
@@ -146,17 +165,28 @@ func (nta *networkTopologyAwarePlugin) OnSessionOpen(ssn *framework.Session) {
 			nodeScores[node.Name] = score
 			if score >= maxScore {
 				maxScore = score
-				scoreToNodes[maxScore] = append(scoreToNodes[maxScore], node.Name)
+				scoreToNodes[maxScore] = append(scoreToNodes[maxScore], node)
 			}
 		}
 		// Calculate score based on the number of tasks scheduled for the job when max score of node has more than one.
 		if len(scoreToNodes[maxScore]) > 1 {
 			candidateNodes := scoreToNodes[maxScore]
 			for _, node := range candidateNodes {
-				hyperNode := util.FindHyperNodeForNode(node, ssn.RealNodesList, ssn.HyperNodesTiers, ssn.HyperNodesSetByTier)
+				hyperNode := util.FindHyperNodeForNode(node.Name, ssn.RealNodesList, ssn.HyperNodesTiers, ssn.HyperNodesSetByTier)
 				taskNumScore := nta.scoreWithTaskNum(hyperNode, taskJob, ssn.RealNodesList)
 				taskNumScore *= float64(nta.weight)
-				nodeScores[node] += taskNumScore
+				nodeScores[node.Name] += taskNumScore
+				if nodeScores[node.Name] >= maxScore {
+					maxScore = nodeScores[node.Name]
+					scoreToNodes[maxScore] = append(scoreToNodes[maxScore], node)
+				}
+			}
+			// Prioritize nodes within the same LEAF HyperNode, then select the one with the lowest IP address among them.
+			if len(scoreToNodes[maxScore]) > 1 {
+				tmpScore, _ := nta.scoreNodeByIP(scoreToNodes[maxScore])
+				for k, v := range tmpScore {
+					nodeScores[k] += v
+				}
 			}
 		}
 
@@ -166,7 +196,6 @@ func (nta *networkTopologyAwarePlugin) OnSessionOpen(ssn *framework.Session) {
 
 	ssn.AddHyperNodeOrderFn(nta.Name(), hyperNodeFn)
 	ssn.AddBatchNodeOrderFn(nta.Name(), nodeFn)
-	ssn.AddTaskOrderFn(nta.Name(), nta.NPUTaskOrderFn)
 }
 
 func (bp *networkTopologyAwarePlugin) OnSessionClose(ssn *framework.Session) {
@@ -218,69 +247,9 @@ func scoreHyperNodeWithTaskNum(taskNum int, allTaskNum int) float64 {
 	return float64(taskNum) / float64(allTaskNum)
 }
 
-func (nta *networkTopologyAwarePlugin) NPUTaskOrderFn(l interface{}, r interface{}) int {
-
-	a, ok := l.(*api.TaskInfo)
-	if !ok {
-		klog.Errorf("Object is not a taskinfo")
-		return 0
-	}
-	b, ok := r.(*api.TaskInfo)
-	if !ok {
-		klog.Errorf("Object is not a taskinfo")
-		return 0
-	}
-
-	rankA := a.GetRank()
-	randB := b.GetRank()
-	// 如果没有指定RANK，这里主要是针对MPI任务，因为MPI任务通过ranktable方式指定的，无法优雅获取，可以根据pod名称的序号排序
-	if rankA == "" && randB == "" && a.Pod != nil && b.Pod != nil {
-		if strings.HasSuffix(a.Pod.Name, "-launcher") || strings.HasSuffix(b.Pod.Name, "-master-0") {
-			return -1
-		}
-
-		if strings.HasSuffix(b.Pod.Name, "-launcher") || strings.HasSuffix(b.Pod.Name, "-master-0") {
-			return 1
-		}
-		if len(a.Pod.Name) < len(b.Pod.Name) {
-			return -1
-		}
-
-		if a.Pod.Name < b.Pod.Name {
-			return -1
-		}
-		return 1
-	}
-
-	rankAId, Aerr := strconv.Atoi(rankA)
-	rankBId, Berr := strconv.Atoi(randB)
-
-	if Aerr == nil && Berr == nil {
-		switch {
-		case rankAId < rankBId:
-			return -1
-		case rankAId > rankBId:
-			return 1
-		default:
-			return 0
-		}
-	}
-
-	if Aerr == nil && Berr != nil {
-		return 1
-	}
-
-	if Aerr != nil && Berr == nil {
-		return -1
-	}
-
-	return 0
-
-}
-
-func GetInternalIP(node *corev1.Node) string {
+func GetInternalIP(node *v1.Node) string {
 	for _, address := range node.Status.Addresses {
-		if address.Type == corev1.NodeInternalIP {
+		if address.Type == v1.NodeInternalIP {
 			return address.Address
 		}
 	}
@@ -293,19 +262,20 @@ func IPToUint32(ipStr string) (uint32, error) {
 		return 0, fmt.Errorf("invalid IP address: %s", ipStr)
 	}
 
-	// 转换为 IPv4 格式
 	ipv4 := ip.To4()
 	if ipv4 == nil {
 		return 0, fmt.Errorf("%s is not an IPv4 address", ipStr)
 	}
-
-	// 将 4 个字节转换为 uint32 (big-endian)
 	return uint32(ipv4[0])<<24 | uint32(ipv4[1])<<16 |
 		uint32(ipv4[2])<<8 | uint32(ipv4[3]), nil
 }
 
 func (nta *networkTopologyAwarePlugin) scoreNodeByIP(nodes []*api.NodeInfo) (map[string]float64, error) {
-	// 找到最小的IP
+	if !utilfeature.DefaultFeatureGate.Enabled(features.NodeIPAware) {
+		klog.V(4).Info("NodeIPAware feature is not enabled, skip scoring by IP")
+		return nil, nil
+	}
+	klog.V(4).Info("Scoring nodes by IP")
 	var minIP uint32
 	minName := ""
 	for _, node := range nodes {
@@ -328,7 +298,7 @@ func (nta *networkTopologyAwarePlugin) scoreNodeByIP(nodes []*api.NodeInfo) (map
 	}
 
 	score := make(map[string]float64)
-	// just set minName with score and others with zero score
-	score[minName] = float64(BaseScore * nta.weight)
+	// just set minName with highPriorityIPScore and others with zero score
+	score[minName] = nta.highPriorityIPScore
 	return score, nil
 }
