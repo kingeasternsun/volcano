@@ -580,8 +580,8 @@ func TestCalculateQuota(t *testing.T) {
 func TestOnSessionClose(t *testing.T) {
 	plugin := &crossQuotaPlugin{
 		Nodes: map[string]*api.NodeInfo{
-			"node1": &api.NodeInfo{},
-			"node2": &api.NodeInfo{},
+			"node1": {},
+			"node2": {},
 		},
 	}
 
