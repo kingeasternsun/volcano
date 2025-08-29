@@ -143,8 +143,7 @@ func (alloc *Action) allocateResources(queues *util.PriorityQueue, jobsMap map[a
 			continue
 		}
 
-		klog.V(3).Infof("Try to allocate resource to Jobs in Queue <%s>", queue.Name)
-
+		klog.V(3).Infof("Try to allocate resource to Jobs in Queue <%s> with strategy <%s>", queue.Name, queue.DequeueStrategy)
 		jobs, found := jobsMap[queue.UID]
 		if !found || jobs.Empty() {
 			klog.V(4).Infof("Can not find jobs for queue %s.", queue.Name)
@@ -208,9 +207,15 @@ func (alloc *Action) allocateResources(queues *util.PriorityQueue, jobsMap map[a
 			stmt.Commit()
 		}
 
+		// If the dequeue strategy is FIFO, put the queue back to priority queue only after job's resource allocating successfully
+		// if stmt is nil, it means the job's resource allocating failed, so we should not put the queue back to scheduler the rest of jobs in the queue
+		if queue.DequeueStrategy == api.DequeueStrategyFIFO && stmt == nil {
+			continue
+		}
 		// Put back the queue to priority queue after job's resource allocating finished,
 		// To ensure that the priority of the queue is calculated based on the latest resource allocation situation.
 		queues.Push(queue)
+
 	}
 }
 
