@@ -169,7 +169,7 @@ func getJobLabelFromVcJob(job *api.JobInfo) map[string]string {
 func GetVCJobReqNPUTypeFromJobInfo(vcJob *api.JobInfo) (string, int, error) {
 	if vcJob == nil || vcJob.TotalRequest == nil {
 		klog.V(util.LogInfoLev).Infof("GetVCJobReqNPUTypeFromJobInfo nil job's parameter.")
-		return "", 0.0, errors.New("nil parameter")
+		return "", 0, errors.New("nil parameter")
 	}
 
 	vcMinResource := getVcjobMinResource(vcJob)
@@ -180,7 +180,7 @@ func GetVCJobReqNPUTypeFromJobInfo(vcJob *api.JobInfo) (string, int, error) {
 		}
 	}
 	klog.V(util.LogDebugLev).Infof("GetVCJobReqNPUTypeFromJobInfo %+v.", vcMinResource.ScalarResources)
-	return "", 0.0, errors.New("nil NPU")
+	return "", 0, nil
 }
 
 func getVcjobMinResource(job *api.JobInfo) *api.Resource {
@@ -241,7 +241,9 @@ func (sJob *SchedulerJob) initSelfPluginByJobInfo(sHandle *ScheduleHandler) {
 		return
 	}
 
-	sJob.policyHandler = sHandle.PolicyBuilder()
+	if sJob.ReqNPUNum > 0 {
+		sJob.policyHandler = sHandle.PolicyBuilder()
+	}
 }
 
 // isJobInitial Determine if the task is ready.
@@ -512,7 +514,9 @@ func (sJob SchedulerJob) validJobFn() *api.ValidateResult {
 		}
 	}
 	if sJob.policyHandler == nil {
-		klog.V(util.LogWarningLev).Infof("%s validNPUJob pass by job<%s> policyHandler is nil.", PluginName, sJob.Name)
+		if sJob.NPUJob != nil && sJob.NPUJob.IsNPUJob() {
+			klog.V(util.LogWarningLev).Infof("%s validNPUJob pass by job<%s> policyHandler is nil.", PluginName, sJob.Name)
+		}
 		return nil
 	}
 	if result := sJob.policyHandler.ValidNPUJob(); result != nil {
@@ -525,12 +529,6 @@ func (sJob SchedulerJob) validJobFn() *api.ValidateResult {
 
 // PreCheckNodePredicate PreCheck Predicate nodes.
 func (sJob SchedulerJob) preCheckNodePredicate(taskInfo *api.TaskInfo, vcNode NPUNode) error {
-	nodeHealthyStatusByNodeD := vcNode.Annotation[util.NodedNodeHealtyStatuskey]
-	if nodeHealthyStatusByNodeD == util.PreSeparateFaultCode {
-		klog.V(util.LogDebugLev).Infof("NodePredicate %s failed, cause node is %s.", vcNode.Name,
-			nodeHealthyStatusByNodeD)
-		return fmt.Errorf("node is %s, due to nodeD reported node status", nodeHealthyStatusByNodeD)
-	}
 	if err := vcNode.checkNPUResourceStable(sJob); err != nil {
 		return err
 	}
@@ -727,6 +725,9 @@ func (sJob *SchedulerJob) checkNodeNum(taskInfo *api.TaskInfo, vcNode NPUNode) e
 
 // isJobSupportByPlugin judge job whether has it's plugin.
 func (sJob SchedulerJob) isJobSupportByPlugin() bool {
+	if sJob.ReqNPUNum <= 0 {
+		return true
+	}
 	name := sJob.GetPluginNameByReq()
 	if name == "" {
 		return false
