@@ -61,9 +61,6 @@ func (fTask *FaultTask) getTaskHealthStateBySubHealth(subHealthyStrategy string)
 }
 
 func (fTask *FaultTask) getUseCardName(task *api.TaskInfo, cardName string) ([]string, error) {
-	if !fTask.IsNpuTask {
-		return nil, nil
-	}
 	strNpu, ok := task.Pod.Annotations[util.AscendNPUPodRealUse]
 	if !ok {
 		return nil, fmt.Errorf("%s has no NPU from %s", task.Name, cardName)
@@ -137,7 +134,6 @@ func newFaultTaskDefault(task *api.TaskInfo, job *api.JobInfo, env plugin.Schedu
 		NodeName:           task.NodeName,
 		PodCreateTime:      task.Pod.CreationTimestamp.Unix(),
 		faultType:          NodeHealthy,
-		IsNpuTask:          util.IsNPUTask(task),
 	}
 	if faultTask.NodeName == "" {
 		faultTask.NodeName = env.SuperPodInfo.SuperPodMapFaultTaskNodes[job.UID][task.Name]

@@ -200,7 +200,7 @@ func (n *NPUNode) initVChips(ni *api.NodeInfo, taskTemplate map[string]map[strin
 		klog.V(util.LogDebugLev).Infof("vNode %s %s.", n.Name, err)
 	}
 	for _, ti := range ni.Tasks {
-		if !util.IsNPUTask(ti) {
+		if !isNPUTask(ti) {
 			continue
 		}
 		n.VNode.addNPUResource(ti.Pod, chipTotalRes, taskTemplate)

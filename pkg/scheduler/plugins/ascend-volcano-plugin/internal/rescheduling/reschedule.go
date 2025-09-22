@@ -98,7 +98,7 @@ func (reScheduler *ReScheduler) GetRunningJobs(ssn *framework.Session) map[api.J
 			continue
 		}
 		// req type is not current card type
-		if schedulerJob.ReqNPUNum == 0 && schedulerJob.NPUJob.IsNPUJob() {
+		if schedulerJob.ReqNPUNum == 0 {
 			klog.V(util.LogWarningLev).Infof("job %s requires npu %d is illegal, skip",
 				schedulerJob.Name, schedulerJob.ReqNPUNum)
 			continue
@@ -146,7 +146,7 @@ func (reScheduler *ReScheduler) updateNewFaultJobAttr(
 	}
 	faultJob.setIsSubHealthFault()
 	klog.V(util.LogDebugLev).Infof("job %s fault types: %v", faultJob.JobName, faultJob.FaultTypes)
-	if npuName == util.NPU910CardName || !npuJob.IsNPUJob() { // 5. update JobRankIds of fault cards
+	if npuName == util.NPU910CardName { // 5. update JobRankIds of fault cards
 		_, ok := reScheduler.JobRemainRetryTimes[faultJob.JobUID]
 		if !ok {
 			if reScheduler.JobRemainRetryTimes == nil {
@@ -441,19 +441,14 @@ func (reScheduler *ReScheduler) AddFaultNodeWithSession() {
 	tmpFaultNodes := make(map[string]*FaultNode, len(reScheduler.Nodes))
 	for name, npuNode := range reScheduler.Nodes {
 		klog.V(util.LogDebugLev).Infof("Adding node %s to reScheduler cache", name)
-		hasNpuRes := util.IsMapHasNPUResource(npuNode.Capability, util.HwPreName)
-		npuName := ""
-		if hasNpuRes {
-			chipKind, nameErr := npuNode.GetChipKindFromNpuNode()
-			if nameErr != nil {
-				klog.V(util.LogDebugLev).Infof("get chip name err by err:%s", nameErr)
-				continue
-			}
-			npuName = util.HwPreName + chipKind
+		chipKind, nameErr := npuNode.GetChipKindFromNpuNode()
+		if nameErr != nil {
+			klog.V(util.LogDebugLev).Infof("get chip name err by err:%s", nameErr)
+			continue
 		}
+		npuName := util.HwPreName + chipKind
 		// 0. Initialise faultNode
 		faultNode := newFaultNodeDefault(npuNode.Name, nowTime)
-		faultNode.IsNpuNode = hasNpuRes
 		faultNode.NPUName = npuName
 		faultNode.SuperPodID = npuNode.SuperPodID
 		faultNode.updateFaultNodesFromDeviceInfo(&npuNode)
@@ -752,10 +747,7 @@ func (reScheduler *ReScheduler) checkNodeCurNodeIsFault(vcNode *plugin.NPUNode, 
 	if fNode.NodeHealthState == NodeUnhealthy {
 		return fmt.Errorf("node is unhealthy")
 	}
-	nodeHealthyStatusByNodeD := vcNode.Annotation[util.NodedNodeHealtyStatuskey]
-	if nodeHealthyStatusByNodeD == util.PreSeparateFaultCode {
-		return fmt.Errorf("node %s health status is %s", vcNode.Name, nodeHealthyStatusByNodeD)
-	}
+
 	if !reScheduler.isJobCanAssignToSubHealthNode(schedulerJob.SubHealthyStrategy,
 		fNode.HasCardSubHealthFault || fNode.HasSwitchSubHealthFault) {
 		return fmt.Errorf("NodePredicate failed, cardSubHealthy=%v and"+
@@ -811,7 +803,7 @@ func (reScheduler ReScheduler) setTaskCardHealthCode(fTask *FaultTask) error {
 		if fNode.NodeName != fTask.NodeName {
 			continue
 		}
-		if fNode.NodeHealthState == NodeUnhealthy && fNode.IsNpuNode {
+		if fNode.NodeHealthState == NodeUnhealthy {
 			var reason FaultReasonList
 			reason.NodeName = fNode.NodeName
 			reason.FaultType = NodeUnhealthy

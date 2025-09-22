@@ -117,20 +117,7 @@ func (sHandle *ScheduleHandler) NodePredicate(taskInfo *api.TaskInfo, nodeInfo *
 		klog.V(util.LogErrorLev).Infof("NodePredicate got null parameter(s), which is invalid.")
 		return fmt.Errorf("got null parameter(s)")
 	}
-
-	vcNode, ok := sHandle.Nodes[nodeInfo.Name]
-	if !ok {
-		klog.V(util.LogDebugLev).Infof("NodePredicate %s not in.", nodeInfo.Name)
-		return nil
-	}
-
-	if sHandle.FaultHandle != nil {
-		if err := sHandle.FaultHandle.CheckNodeNPUByTask(taskInfo, &vcNode); err != nil {
-			return err
-		}
-	}
-
-	if !util.IsNPUTask(taskInfo) {
+	if !isNPUTask(taskInfo) {
 		return nil
 	}
 	klog.V(util.LogDebugLev).Infof("enter node(%s) predicate", nodeInfo.Name)
@@ -144,6 +131,18 @@ func (sHandle *ScheduleHandler) NodePredicate(taskInfo *api.TaskInfo, nodeInfo *
 	if !vcJob.isNPUJob() {
 		klog.V(util.LogDebugLev).Infof("NodePredicate vc-job:%#v is not npu job.", vcJob)
 		return nil
+	}
+
+	vcNode, ok := sHandle.Nodes[nodeInfo.Name]
+	if !ok {
+		klog.V(util.LogDebugLev).Infof("NodePredicate %s not in.", nodeInfo.Name)
+		return nil
+	}
+
+	if sHandle.FaultHandle != nil {
+		if err := sHandle.FaultHandle.CheckNodeNPUByTask(taskInfo, &vcNode); err != nil {
+			return err
+		}
 	}
 
 	if err := vcJob.preCheckNodePredicate(taskInfo, vcNode); err != nil {
@@ -166,7 +165,15 @@ func (n *NPUNode) initNPUNodeByNodeInf(npuNode *api.NodeInfo, deviceInfo k8s.Nod
 		klog.V(util.LogInfoLev).Infof("InitNPUNodeByNodeInf failed: %s.", util.ArgumentError)
 		return errors.New(util.ArgumentError)
 	}
+	capability := getNPUNodeCapacity(npuNode)
+	if !util.IsMapHasNPUResource(capability, util.HwPreName) {
+		return fmt.Errorf("node %s npu resource is not enable", npuNode.Name)
+	}
+	if deviceInfo.DeviceList == nil {
+		return fmt.Errorf("node %s device info or clusterd info is not enable", npuNode.Name)
+	}
 	n.Name = npuNode.Name
+	n.Capability = capability
 	n.BaseDeviceInfo = npuNode.Node.Annotations[util.BaseDeviceInfoKey]
 	n.Allocate = npuNode.Allocatable.ScalarResources
 	n.Idle = npuNode.Idle.ScalarResources
@@ -174,17 +181,6 @@ func (n *NPUNode) initNPUNodeByNodeInf(npuNode *api.NodeInfo, deviceInfo k8s.Nod
 	n.Address = getNPUNodeAddress(npuNode)
 	n.Tasks = npuNode.Tasks
 	n.syncAnnotation(npuNode, nodeInfoOfNodeD, switchInfo)
-	capability := getNPUNodeCapacity(npuNode)
-	if capability == nil {
-		return fmt.Errorf("node %s capability is invalid", npuNode.Name)
-	}
-	n.Capability = capability
-	if !util.IsMapHasNPUResource(capability, util.HwPreName) {
-		return fmt.Errorf("node %s npu resource is not enable", npuNode.Name)
-	}
-	if deviceInfo.DeviceList == nil {
-		return fmt.Errorf("node %s device info or clusterd info is not enable", npuNode.Name)
-	}
 	n.updateNPUNodeDeviceInfos(deviceInfo)
 
 	if setVNPUErr := n.setNodeVNPUInfo(npuNode, vJobTemplate); setVNPUErr != nil {

@@ -23,7 +23,7 @@ import (
 	"fmt"
 	"strings"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog"
 	"volcano.sh/volcano/pkg/scheduler/api"
@@ -91,8 +91,6 @@ func (tp *huaweiNPUPlugin) OnSessionOpen(ssn *framework.Session) {
 	addJobReadyFn(ssn, tp)
 
 	addJobEnqueueableFn(ssn, tp)
-
-	addTaskOrderFn(ssn, tp)
 	// Register event handlers to update task info in PodLister & nodeMap
 	// for support Concurrency
 	addEventHandler(ssn, tp)
@@ -236,12 +234,6 @@ func addJobEnqueueableFn(ssn *framework.Session, tp *huaweiNPUPlugin) {
 		klog.V(util.LogWarningLev).Infof("job <%s> Add enqueue success will start schedule, require npu num is <%v> "+
 			"and cluster npu num is <%v>.", vcjob.Name, rNpuNum, tNpuNum)
 		return util.JobEnqueue
-	})
-}
-
-func addTaskOrderFn(ssn *framework.Session, tp *huaweiNPUPlugin) {
-	ssn.AddTaskOrderFn(tp.Name(), func(l interface{}, r interface{}) int {
-		return tp.Scheduler.TaskOrderFn(l, r)
 	})
 }
 

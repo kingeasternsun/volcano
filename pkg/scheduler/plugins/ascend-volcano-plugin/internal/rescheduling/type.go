@@ -244,7 +244,6 @@ type FaultNode struct {
 	HasSwitchSubHealthFault bool
 	HasCardSubHealthFault   bool
 	LinkDownTime            int64
-	IsNpuNode               bool
 }
 
 // SimpleFNodeInfo simple fault node info
@@ -283,7 +282,6 @@ type FaultTask struct {
 	UseCardName        []string
 	PodCreateTime      int64
 	faultType          string
-	IsNpuTask          bool
 }
 
 // miniFaultTask struct for print fTask important infos to logs
