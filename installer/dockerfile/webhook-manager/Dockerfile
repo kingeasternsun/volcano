@@ -12,22 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM golang:1.21.8 AS builder
+FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/library/golang:1.21.10 AS builder
 WORKDIR /go/src/volcano.sh/
 COPY go.mod go.sum ./
-RUN go mod download
+RUN go env -w GO111MODULE=on && go env -w GOPROXY=https://goproxy.cn,direct && go mod download
 ADD . volcano
 RUN cd volcano && make vc-webhook-manager
 
-FROM alpine:latest
-ARG KUBE_VERSION="1.29.0"
+FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/library/alpine:latest 
+ARG KUBE_VERSION="1.32.0"
 ARG TARGETARCH
 ARG APK_MIRROR
 RUN if [[ -n "$APK_MIRROR" ]]; then sed -i "s@https://dl-cdn.alpinelinux.org@${APK_MIRROR}@g" /etc/apk/repositories ; fi && \
     apk add --update ca-certificates && \
     apk add --update openssl && \
     apk add --update -t deps curl && \
-    curl -L https://storage.googleapis.com/kubernetes-release/release/v$KUBE_VERSION/bin/linux/$TARGETARCH/kubectl -o /usr/local/bin/kubectl && \
+    curl -L https://dl.k8s.io/release/v$KUBE_VERSION/bin/linux/$TARGETARCH/kubectl -o /usr/local/bin/kubectl && \
     chmod +x /usr/local/bin/kubectl && \
     apk del --purge deps && \
     rm /var/cache/apk/*
