@@ -130,7 +130,7 @@ func addJobValidFn(ssn *framework.Session, tp *huaweiNPUPlugin) {
 
 func addPredicateFn(ssn *framework.Session, tp *huaweiNPUPlugin) {
 	// check job npu resource, if illegal return failed
-	ssn.AddPredicateFn(tp.Name(), func(taskInfo *api.TaskInfo, nodeInfo *api.NodeInfo) error {
+	ssn.AddPredicateFn(tp.Name(), func(taskInfo *api.TaskInfo, nodeInfo *api.NodeInfo) ([]*api.Status, error) {
 		predicateErr := tp.Scheduler.NodePredicate(taskInfo, nodeInfo)
 		if predicateErr != nil {
 			tp.Scheduler.Jobs[taskInfo.Job].Lock()
@@ -141,7 +141,7 @@ func addPredicateFn(ssn *framework.Session, tp *huaweiNPUPlugin) {
 			predicateErr = fmt.Errorf("node check failed. for details,log by search keywords <%s> in volcano's log",
 				predicateErr.Error())
 		}
-		return predicateErr
+		return []*api.Status{}, predicateErr
 	})
 }
 

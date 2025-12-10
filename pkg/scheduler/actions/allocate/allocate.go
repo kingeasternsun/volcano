@@ -227,11 +227,10 @@ func (alloc *Action) allocateResourcesForTasks(tasks *util.PriorityQueue, job *a
 			switch {
 			case len(nodes) == 0:
 				klog.V(5).Infof("Task: %v, no matching node is found in the candidateNodes（index: %d） list.", task.Name, index)
-			case len(nodes) == 1: // If only one node after predicate, just use it.
+			case len(nodes) == 1 && !task.IsNPUTask():
 				bestNode = nodes[0]
-			case len(nodes) > 1: // If more than one node after predicate, using "the best" one
+			default:
 				nodeScores := util.PrioritizeNodes(task, nodes, ssn.BatchNodeOrderFn, ssn.NodeOrderMapFn, ssn.NodeOrderReduceFn)
-
 				bestNode = ssn.BestNodeFn(task, nodeScores)
 				if bestNode == nil {
 					bestNode = util.SelectBestNode(nodeScores)
