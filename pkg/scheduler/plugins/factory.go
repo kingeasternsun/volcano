@@ -22,6 +22,7 @@ package plugins
 
 import (
 	"volcano.sh/volcano/pkg/scheduler/framework"
+	avp "volcano.sh/volcano/pkg/scheduler/plugins/ascend-volcano-plugin"
 	"volcano.sh/volcano/pkg/scheduler/plugins/binpack"
 	"volcano.sh/volcano/pkg/scheduler/plugins/capacity"
 	"volcano.sh/volcano/pkg/scheduler/plugins/cdp"
@@ -80,4 +81,5 @@ func init() {
 
 	// Plugins for ResourceQuota
 	framework.RegisterPluginBuilder(resourcequota.PluginName, resourcequota.New)
+	framework.RegisterPluginBuilder(avp.PluginName, avp.New)
 }

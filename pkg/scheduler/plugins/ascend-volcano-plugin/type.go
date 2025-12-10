@@ -15,9 +15,9 @@ limitations under the License.
 */
 
 /*
-Package main is using for HuaWei Ascend pin affinity schedule.
+Package ascendvolcanoplugin is using for HuaWei Ascend pin affinity schedule.
 */
-package main
+package ascendvolcanoplugin
 
 import (
 	"volcano.sh/volcano/pkg/scheduler/framework"
@@ -27,7 +27,7 @@ import (
 
 // PluginName use in frame build.
 // The value will be modified during the linking stage. Do not modify it to a constant.
-var PluginName = "volcano-npu_v6.0.0"
+var PluginName = "volcano-npu"
 
 type huaweiNPUPlugin struct {
 	// Scheduler for plugin args and its handler.

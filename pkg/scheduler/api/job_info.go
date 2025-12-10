@@ -325,6 +325,17 @@ func (ti TaskInfo) String() string {
 	return res
 }
 
+// IsNPUTask returns true if the job is an NPU job
+func (ti *TaskInfo) IsNPUTask() bool {
+	for k := range ti.Resreq.ScalarResources {
+		// must contain "huawei.com/"
+		if strings.Contains(string(k), "huawei.com/") {
+			return true
+		}
+	}
+	return false
+}
+
 // JobID is the type of JobInfo's ID.
 type JobID types.UID
 
