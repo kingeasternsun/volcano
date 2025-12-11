@@ -32,6 +32,8 @@ type runningState struct {
 
 func (ps *runningState) Execute(action Action) error {
 	switch action.Action {
+	case "Ignore":
+		return nil
 	case v1alpha1.RestartJobAction:
 		return KillJob(ps.job, PodRetainPhaseNone, func(status *vcbatch.JobStatus) bool {
 			status.State.Phase = vcbatch.Restarting

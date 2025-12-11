@@ -15,9 +15,9 @@ limitations under the License.
 */
 
 /*
-Package main is using for HuaWei Ascend pin affinity schedule.
+Package ascendvolcanoplugin is using for HuaWei Ascend pin affinity schedule.
 */
-package main
+package ascendvolcanoplugin
 
 import (
 	"testing"
