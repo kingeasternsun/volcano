@@ -1,15 +1,14 @@
 #!/bin/bash
+set -euo pipefail
+
 # 构建并推送 Volcano 多平台镜像（不使用 buildx）
 # 支持组件: scheduler, controller-manager, webhook-manager
 # 使用方法: 
-#   ./build-multi-platform-images.sh                    # 构建所有组件
-#   ./build-multi-platform-images.sh scheduler          # 只构建 scheduler
-#   ./build-multi-platform-images.sh scheduler controller-manager  # 构建指定组件
+#   ./build-multi-platform-images.sh registry.xxx.com v1.11.0-v7.1.RC1                   # 构建所有组件
+#   ./build-multi-platform-images.sh registry.xxx.com v1.11.0-v7.1.RC1 scheduler          # 只构建 scheduler
+#   ./build-multi-platform-images.sh registry.xxx.com v1.11.0-v7.1.RC1 scheduler controller-manager  # 构建指定组件
 
 set -e
-
-REGISTRY="registry.xxx.dev/volcano"
-VERSION="v1.11.0-v7.1.RC1"
 
 # 所有支持的组件
 ALL_COMPONENTS=("scheduler" "controller-manager" "webhook-manager")
@@ -17,6 +16,15 @@ ALL_COMPONENTS=("scheduler" "controller-manager" "webhook-manager")
 # 平台列表
 PLATFORMS=("linux/amd64" "linux/arm64")
 PLATFORM_TAGS=("amd64" "arm64")
+
+if [[ $# -lt 2 ]]; then
+  echo "Usage: $0 <registry> <version> [components...]"
+  exit 1
+fi
+
+REGISTRY="$1"
+VERSION="$2"
+shift 2
 
 # 解析命令行参数，确定要构建的组件
 if [ $# -eq 0 ]; then
