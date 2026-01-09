@@ -816,7 +816,7 @@ func (cp *capacityPlugin) checkHierarchicalQueue(attr *queueAttr) error {
 
 	// Check if the parent queue's deserved resources are less than the total deserved resources of child queues
 	if attr.deserved.LessPartly(totalDeserved, api.Zero) {
-		return fmt.Errorf("queue <%s> deserved resources <%s> are less than the sum of its child queues' deserved resources <%s>",
+		klog.Warningf("queue <%s> deserved resources <%s> are less than the sum of its child queues' deserved resources <%s>",
 			attr.name, attr.deserved, totalDeserved)
 	}
 
