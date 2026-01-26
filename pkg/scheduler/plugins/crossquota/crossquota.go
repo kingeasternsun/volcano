@@ -86,6 +86,8 @@ const (
 type ScoringStrategy string
 
 type crossQuotaPlugin struct {
+	ssn *framework.Session
+
 	// Arguments given for the plugin
 	pluginArguments framework.Arguments
 
@@ -387,6 +389,28 @@ func (cq *crossQuotaPlugin) isCPUPod(task *api.TaskInfo) bool {
 			}
 		}
 	}
+
+	if cq.ssn == nil {
+		return true
+	}
+
+	// The CPU task may belongs to GPU Job
+	job, ok := cq.ssn.Jobs[task.Job]
+	if !ok {
+		return true
+	}
+
+	for resName, value := range job.TotalRequest.ScalarResources {
+		for _, pattern := range cq.gpuResourcePatterns {
+			if pattern.MatchString(string(resName)) && value > minMilliScalarResources {
+				klog.V(4).Infof("%v: task %s is CPU pod but belong to job with GPU %v", PluginName, task.Name, resName)
+				return false
+			}
+		}
+	}
+
+	klog.V(4).Infof("%v: task %s is CPU pod", PluginName, task.Name)
+
 	return true
 }
 
@@ -521,7 +545,7 @@ func (cq *crossQuotaPlugin) OnSessionOpen(ssn *framework.Session) {
 	defer func() {
 		klog.V(4).Infof("Leaving crossquota plugin. weight: %v ...", cq.pluginWeight)
 	}()
-
+	cq.ssn = ssn
 	for _, node := range ssn.Nodes {
 		// Only apply on GPU nodes
 		if !cq.isGPUNode(node) {

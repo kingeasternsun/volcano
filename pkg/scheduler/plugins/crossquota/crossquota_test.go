@@ -1175,7 +1175,7 @@ func TestPredicateFn(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := plugin.predicateFn(tc.task, tc.node)
+			_, err := plugin.predicateFn(tc.task, tc.node)
 
 			if tc.expectError {
 				if err == nil {
