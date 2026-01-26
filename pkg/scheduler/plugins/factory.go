@@ -23,6 +23,7 @@ import (
 	"volcano.sh/volcano/pkg/scheduler/plugins/capacity"
 	"volcano.sh/volcano/pkg/scheduler/plugins/cdp"
 	"volcano.sh/volcano/pkg/scheduler/plugins/conformance"
+	"volcano.sh/volcano/pkg/scheduler/plugins/crossquota"
 	"volcano.sh/volcano/pkg/scheduler/plugins/deviceshare"
 	"volcano.sh/volcano/pkg/scheduler/plugins/drf"
 	"volcano.sh/volcano/pkg/scheduler/plugins/extender"
@@ -75,4 +76,6 @@ func init() {
 	framework.RegisterPluginBuilder(resourcequota.PluginName, resourcequota.New)
 
 	framework.RegisterPluginBuilder(avp.PluginName, avp.New)
+
+	framework.RegisterPluginBuilder(crossquota.PluginName, crossquota.New)
 }
