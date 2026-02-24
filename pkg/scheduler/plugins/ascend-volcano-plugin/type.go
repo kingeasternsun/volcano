@@ -27,7 +27,8 @@ import (
 
 // PluginName use in frame build.
 // The value will be modified during the linking stage. Do not modify it to a constant.
-var PluginName = "volcano-npu"
+// var PluginName = "volcano-npu"
+var PluginName = "volcano-npu_v7.0.RC1_linux-aarch64"
 
 type huaweiNPUPlugin struct {
 	// Scheduler for plugin args and its handler.
