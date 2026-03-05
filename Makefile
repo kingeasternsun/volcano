@@ -95,7 +95,7 @@ image_bins: vc-scheduler vc-controller-manager vc-webhook-manager
 
 images:
 	for name in scheduler; do\
-		docker buildx build -t "${IMAGE_PREFIX}/vc-$$name:v1.9.1-202603051148-12800f892 " . -f ./installer/dockerfile/$$name/Dockerfile --output=type=${BUILDX_OUTPUT_TYPE} --platform ${DOCKER_PLATFORMS} --build-arg APK_MIRROR=${APK_MIRROR}; \
+		docker buildx build -t "${IMAGE_PREFIX}/vc-$$name:v1.9.1-202603051148-12800f892" . -f ./installer/dockerfile/$$name/Dockerfile --output=type=${BUILDX_OUTPUT_TYPE} --platform ${DOCKER_PLATFORMS} --build-arg APK_MIRROR=${APK_MIRROR}; \
 	done
 
 generate-code:
