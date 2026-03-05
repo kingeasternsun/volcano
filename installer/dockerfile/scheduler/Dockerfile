@@ -26,7 +26,7 @@ ADD . volcano
 # 关键修改：将 TARGETARCH 传给 Makefile 的 GOARCH
 RUN cd volcano && GOOS=linux GOARCH=${TARGETARCH} make vc-scheduler
 
-FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/library/alpine:latest 
+FROM --platform=$TARGETPLATFORM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/library/alpine:latest 
 # 注意：这里的路径要对应上
 COPY --from=builder /go/src/volcano.sh/volcano/_output/bin/vc-scheduler /vc-scheduler
 ENTRYPOINT ["/vc-scheduler"]
