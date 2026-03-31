@@ -23,8 +23,8 @@ import (
 	"errors"
 	"fmt"
 
-	"k8s.io/api/core/v1"
-	"k8s.io/klog"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/klog/v2"
 	"volcano.sh/volcano/pkg/scheduler/api"
 	"volcano.sh/volcano/pkg/scheduler/framework"
 

@@ -36,12 +36,14 @@ func OpenSession(cache cache.Cache, tiers []conf.Tier, configurations []conf.Con
 
 	for _, tier := range tiers {
 		for _, plugin := range tier.Plugins {
+
 			if pb, found := GetPluginBuilder(plugin.Name); !found {
 				klog.Errorf("Failed to get plugin %s.", plugin.Name)
 			} else {
 				plugin := pb(plugin.Arguments)
 				ssn.plugins[plugin.Name()] = plugin
 				onSessionOpenStart := time.Now()
+				klog.Infof("plugin open %s", plugin.Name())
 				plugin.OnSessionOpen(ssn)
 				metrics.UpdatePluginDuration(plugin.Name(), metrics.OnSessionOpen, metrics.Duration(onSessionOpenStart))
 			}
