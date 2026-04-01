@@ -76,7 +76,7 @@ func (sHandle *ScheduleHandler) InitJobsFromSsn(ssn *framework.Session) {
 		// get ownerInfo, deployment job need
 		ownerInfo, err := getOwnerInfo(jobInfo, sHandle.FrameAttr)
 		if err != nil {
-			klog.V(util.LogDebugLev).Infof("%s getOwnerInfo failed: %s.", jobInfo.Name, util.SafePrint(err))
+			klog.V(util.LogDebugLev).Infof("%s %s getOwnerInfo failed: %s.", jobID, jobInfo.Name, util.SafePrint(err))
 			continue
 		}
 		sJob := SchedulerJob{
@@ -86,9 +86,10 @@ func (sHandle *ScheduleHandler) InitJobsFromSsn(ssn *framework.Session) {
 			UnscheduledReason: newUnscheduledReason(),
 		}
 		if err := sJob.init(jobInfo, sHandle); err != nil {
-			klog.V(util.LogDebugLev).Infof("%s InitJobsFromSsn failed: %s.", jobInfo.Name, util.SafePrint(err))
+			klog.V(util.LogDebugLev).Infof("%s %s InitJobsFromSsn failed: %s.", jobID, jobInfo.Name, util.SafePrint(err))
 			continue
 		}
+		klog.V(util.LogInfoLev).Infof("InitJobsFromSsn sJob (%v) (%v)", jobID, jobInfo.Name)
 		newJobs[jobID] = sJob
 	}
 	sHandle.Jobs = newJobs
@@ -461,7 +462,7 @@ func (sHandle *ScheduleHandler) BatchNodeOrderFn(task *api.TaskInfo,
 	scoreMap := initScoreMap(nodes)
 	vcJob, ok := sHandle.Jobs[task.Job]
 	if !ok {
-		klog.V(util.LogDebugLev).Infof("BatchNodeOrderFn %s not req npu.", task.Name)
+		klog.V(util.LogInfoLev).Infof("BatchNodeOrderFn %s of job (%v) not req npu.", task.Name, task.Job)
 		return scoreMap, nil
 	}
 
