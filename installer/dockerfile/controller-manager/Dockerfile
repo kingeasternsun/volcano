@@ -12,13 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/library/golang:1.21.10 AS builder
+FROM --platform=$BUILDPLATFORM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/library/golang:1.21.10 AS builder
 WORKDIR /go/src/volcano.sh/
+
+# 声明 Buildx 自动提供的变量
+ARG TARGETARCH
+
 COPY go.mod go.sum ./
 RUN go env -w GO111MODULE=on && go env -w GOPROXY=https://goproxy.cn,direct && go mod download
 ADD . volcano
 RUN cd volcano && make vc-controller-manager
 
-FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/library/alpine:latest 
+FROM swr.cn-south-1.myhuaweicloud.com/ascendhub/vc-controller-manager:v1.9.0-v7.3.0 
 COPY --from=builder /go/src/volcano.sh/volcano/_output/bin/vc-controller-manager /vc-controller-manager
 ENTRYPOINT ["/vc-controller-manager"]
