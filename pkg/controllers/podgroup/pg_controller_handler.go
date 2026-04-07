@@ -177,6 +177,10 @@ func (pg *pgcontroller) getAnnotationsFromUpperRes(kind string, name string, nam
 	}
 }
 
+const (
+	SuperPodAnnoKey = "sp-block"
+)
+
 // Inherit annotations from upper resources.
 func (pg *pgcontroller) inheritUpperAnnotations(pod *v1.Pod, obj *scheduling.PodGroup) {
 	if pg.inheritOwnerAnnotations {
@@ -184,7 +188,7 @@ func (pg *pgcontroller) inheritUpperAnnotations(pod *v1.Pod, obj *scheduling.Pod
 			if reference.Kind != "" && reference.Name != "" {
 				var upperAnnotations = pg.getAnnotationsFromUpperRes(reference.Kind, reference.Name, pod.Namespace)
 				for k, v := range upperAnnotations {
-					if strings.HasPrefix(k, scheduling.AnnotationPrefix) {
+					if strings.HasPrefix(k, scheduling.AnnotationPrefix) || k == SuperPodAnnoKey {
 						obj.Annotations[k] = v
 					}
 				}
@@ -236,6 +240,14 @@ func (pg *pgcontroller) createNormalPodPGIfNotExist(pod *v1.Pod) error {
 		if value, ok := pod.Annotations[scheduling.RevocableZone]; ok {
 			obj.Annotations[scheduling.RevocableZone] = value
 		}
+
+		// Fix the bug that NPU 910c not support Deployment
+		if value, ok := pod.Annotations[SuperPodAnnoKey]; ok {
+			if _, exist := obj.Annotations[SuperPodAnnoKey]; !exist {
+				obj.Annotations[SuperPodAnnoKey] = value
+			}
+		}
+
 		if value, ok := pod.Labels[scheduling.PodPreemptable]; ok {
 			obj.Labels[scheduling.PodPreemptable] = value
 		}
