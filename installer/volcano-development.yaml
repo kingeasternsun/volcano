@@ -160,6 +160,15 @@ spec:
             - 2>&1
           image: docker.io/volcanosh/vc-webhook-manager:latest
           imagePullPolicy: Always
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /healthz
+              port: 11251
+              scheme: HTTPS
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 3
           name: admission
           volumeMounts:
             - mountPath: /admission.local.config/certificates
@@ -9326,6 +9335,22 @@ spec:
             - -v=4
             - 2>&1
           imagePullPolicy: Always
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /healthz
+              port: 11251
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 3
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /healthz
+              port: 11251
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
           securityContext:
               allowPrivilegeEscalation: false
               capabilities:
@@ -9564,6 +9589,22 @@ spec:
             - name: DEBUG_SOCKET_DIR
               value: /tmp/klog-socks
           imagePullPolicy: Always
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /healthz
+              port: 11251
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 3
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /healthz
+              port: 11251
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
           volumeMounts:
             - name: scheduler-config
               mountPath: /volcano.scheduler

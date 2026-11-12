@@ -149,6 +149,12 @@ The following are the list configurable parameters of Volcano Chart and their de
 |`custom.scheduler_log_level`|Settings log print level for Scheduler|`3`|
 |`custom.scheduler_plugins_dir`| Settings dir for the Scheduler to load custom plugins|``|
 |`custom.webhooks_namespace_selector_expressions`|Additional namespace selector expressions for Volcano admission webhooks|`~`|
+|`custom.admission_liveness_probe`|Liveness probe for Admission (full probe spec; `~` to disable). Healthz is served over HTTPS|see `values.yaml`|
+|`custom.admission_readiness_probe`|Readiness probe for Admission (full probe spec; `~` to disable). Keep disabled with 1 replica and `failurePolicy: Fail` webhooks|`~`|
+|`custom.controller_liveness_probe`|Liveness probe for Controller (full probe spec; `~` to disable)|see `values.yaml`|
+|`custom.controller_readiness_probe`|Readiness probe for Controller (full probe spec; `~` to disable)|see `values.yaml`|
+|`custom.scheduler_liveness_probe`|Liveness probe for Scheduler (full probe spec; `~` to disable)|see `values.yaml`|
+|`custom.scheduler_readiness_probe`|Readiness probe for Scheduler (full probe spec; `~` to disable)|see `values.yaml`|
 |`service.ipFamilyPolicy`|Settings service the family policy|``|
 |`service.ipFamilies`|Settings service the address families|`[]`|
 
