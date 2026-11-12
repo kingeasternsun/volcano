@@ -48,6 +48,55 @@ custom:
   scheduler_pprof_enable: false
   scheduler_plugins_dir: ""
   scheduler_name: ~
+  # Liveness/readiness probes against the --enable-healthz endpoint on :11251/healthz.
+  # Enabled by default; set a probe to ~ to disable it for that component.
+  # Admission always loads its webhook TLS certs, so StartHealthz serves healthz over
+  # HTTPS there (plain HTTP gets no answer and the pod crash-loops); scheduler and
+  # controllers load no certs and stay plain HTTP.
+  # With admission at 1 replica and failurePolicy: Fail webhooks, admission_readiness_probe
+  # removes the only webhook endpoint while unready — raise replicas before enabling it.
+  scheduler_liveness_probe:
+    httpGet:
+      path: /healthz
+      port: 11251
+    initialDelaySeconds: 15
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+  scheduler_readiness_probe:
+    httpGet:
+      path: /healthz
+      port: 11251
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+  controller_liveness_probe:
+    httpGet:
+      path: /healthz
+      port: 11251
+    initialDelaySeconds: 15
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+  controller_readiness_probe:
+    httpGet:
+      path: /healthz
+      port: 11251
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+  admission_liveness_probe:
+    httpGet:
+      path: /healthz
+      port: 11251
+      scheme: HTTPS
+    initialDelaySeconds: 15
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+  admission_readiness_probe: ~
   leader_elect_enable: false
   # ValidatingAdmissionPolicy settings (auto-enabled for K8s >= 1.30)
   vap_enable: false

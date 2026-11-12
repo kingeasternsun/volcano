@@ -287,6 +287,14 @@ spec:
                   divisor: "1"
             {{- end }}
           imagePullPolicy: {{ .Values.basic.image_pull_policy }}
+          {{- if .Values.custom.scheduler_liveness_probe }}
+          livenessProbe:
+            {{- toYaml .Values.custom.scheduler_liveness_probe | nindent 12 }}
+          {{- end }}
+          {{- if .Values.custom.scheduler_readiness_probe }}
+          readinessProbe:
+            {{- toYaml .Values.custom.scheduler_readiness_probe | nindent 12 }}
+          {{- end }}
           volumeMounts:
             - name: scheduler-config
               mountPath: /volcano.scheduler

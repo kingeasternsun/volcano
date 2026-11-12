@@ -161,6 +161,14 @@ spec:
             - 2>&1
           image: {{ .Values.basic.image_registry }}/{{.Values.basic.admission_image_name}}:{{ .Values.basic.admission_image_tag_version | default .Values.basic.image_tag_version }}
           imagePullPolicy: {{ .Values.basic.image_pull_policy }}
+          {{- if .Values.custom.admission_liveness_probe }}
+          livenessProbe:
+            {{- toYaml .Values.custom.admission_liveness_probe | nindent 12 }}
+          {{- end }}
+          {{- if .Values.custom.admission_readiness_probe }}
+          readinessProbe:
+            {{- toYaml .Values.custom.admission_readiness_probe | nindent 12 }}
+          {{- end }}
           name: admission
           {{- if .Values.custom.admission_resources }}
           resources:

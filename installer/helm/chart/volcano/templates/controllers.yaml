@@ -227,6 +227,14 @@ spec:
             - -v={{.Values.custom.controller_log_level}}
             - 2>&1
           imagePullPolicy: {{ .Values.basic.image_pull_policy }}
+          {{- if .Values.custom.controller_liveness_probe }}
+          livenessProbe:
+            {{- toYaml .Values.custom.controller_liveness_probe | nindent 12 }}
+          {{- end }}
+          {{- if .Values.custom.controller_readiness_probe }}
+          readinessProbe:
+            {{- toYaml .Values.custom.controller_readiness_probe | nindent 12 }}
+          {{- end }}
             {{- if $controller_main_csc }}
           securityContext:
               {{- toYaml $controller_main_csc | nindent 14 }}
